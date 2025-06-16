@@ -3,54 +3,64 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const path = require("path");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const multer = require("multer");
-const fs = require("fs");
-const { GridFSBucket, ObjectId } = require("mongodb");
-const conn = mongoose.connection;
-
-const app = express();
 
 const connectDB = require("./config/db");
-const { PORT } = require("./config/constants");
+
+// Route imports
 const routes = require("./routes");
 const applicants = require("./routes/applicantRoutes");
 const admins = require("./routes/adminRoutes");
 const assessors = require("./routes/assessorRoutes");
 
-// Middleware
-app.use(express.json());
-app.use(cookieParser());
+const app = express();
+
+// ---------- Middleware ----------
+
+// Enable CORS for local dev and Railway frontend
 app.use(
   cors({
-    origin: "http://localhost", // or your frontend URL
+    origin: [
+      "http://localhost:3000",                     // Dev frontend
+      "https://your-frontend.up.railway.app"       // Replace with actual frontend domain
+    ],
     credentials: true,
     exposedHeaders: ["set-cookie"],
   })
 );
+
+app.use(express.json());
+app.use(cookieParser());
 app.use(bodyParser.json());
 
-// Serve static files
+// Serve static files from public (if any)
 app.use(express.static(path.join(__dirname, "public")));
 
+// ---------- Connect to MongoDB ----------
 connectDB();
 
+// ---------- Test Route ----------
+app.get("/", (req, res) => {
+  res.json({ success: true, message: "Backend is running 🚀" });
+});
+
+// ---------- Routes ----------
 app.use("/", routes, applicants, assessors, admins);
 
-// Error handling middleware
+// ---------- Error Handler ----------
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
+  console.error("Unhandled error:", err.stack || err);
   res.status(500).json({
     success: false,
     error: "Internal server error",
-    details: process.env.NODE_ENV === "development" ? err.message : undefined,
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 });
 
-// Start Server
+// ---------- Start Server ----------
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
